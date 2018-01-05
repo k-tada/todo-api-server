@@ -1,0 +1,15 @@
+version: '2'
+
+services:
+  app:
+    build:
+      context: ./
+      dockerfile: Dockerfile
+    volumes:
+      - '.:/go/src/app'
+      - '/go/src/app/vendor'
+    environment:
+      PORT: 9999
+    ports:
+      - '9999:9999'
+
