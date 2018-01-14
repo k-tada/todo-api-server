@@ -15,7 +15,15 @@ func main() {
 	r.GET("/", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"message": "access to /todos"})
 	})
-	r.GET("/todos", todos.List)
+
+	todosRoute := r.Group("/todos")
+	{
+		todosRoute.GET("/", todos.List)
+		todosRoute.POST("/", todos.Create)
+		todosRoute.GET("/:id", todos.Show)
+		todosRoute.PUT("/:id/", todos.Update)
+	}
+
 	port := os.Getenv("PORT")
 	if len(port) == 0 {
 		port = "9999"
