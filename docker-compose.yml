@@ -1,13 +1,16 @@
-version: '2'
+version: '3'
 
 services:
   app:
+    container_name: app
     build:
       context: ./
       dockerfile: Dockerfile
     volumes:
-      - '.:/go/src/app'
-      - '/go/src/app/vendor'
+      - ".:/go/src/todo-api-server"
+      - '/go/src/todo-api-server/vendor'
+      # - ".:/go/src/github.com/k-tada/todo-api-server"
+      # - '/go/src/github.com/k-tada/todo-api-server/vendor'
     environment:
       PORT: 9999
     ports:
