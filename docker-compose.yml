@@ -15,4 +15,11 @@ services:
       PORT: 9999
     ports:
       - '9999:9999'
+    links:
+      - mongo
+
+  mongo:
+    image: mongo
+    restart: always
+    container_name: mongo
 

@@ -2,64 +2,87 @@ package todos
 
 import (
 	"net/http"
-	"strconv"
+	"time"
 
 	"github.com/gin-gonic/gin"
-)
+	mgo "gopkg.in/mgo.v2"
+	"gopkg.in/mgo.v2/bson"
 
-type Todo struct {
-	Id          int    `form:"id" json:"id"`
-	Text        string `form:"title" json:"title"`
-	Status      string `form:"status" json:"status"`
-	Description string `form:"description" json:"description"`
-}
-
-type Todos []Todo
-
-func (t Todos) findById(id int) *Todo {
-	for _, v := range t {
-		if v.Id == id {
-			return &v
-		}
-	}
-	return nil
-}
-
-var todos = Todos{
-	{1, "hoge", TodoStatus, "Hoge Todo"},
-	{2, "fuga", DoingStatus, "Fuga Todo"},
-	{3, "piyo", DoneStatus, "Piyo Todo"},
-	{4, "mogo", DoneStatus, "Mogo Todo"},
-}
-
-const (
-	TodoStatus  string = "todo"
-	DoingStatus string = "doing"
-	DoneStatus  string = "done"
+	"todo-api-server/models"
 )
 
 func List(c *gin.Context) {
+	db := c.MustGet("db").(*mgo.Database)
+
+	todos := []models.Todo{}
+	err := db.C(models.CollectionTodo).Find(nil).Sort("-_id").All(&todos)
+	if err != nil {
+		c.Error(err)
+		return
+	}
 	c.JSON(http.StatusOK, todos)
 }
 
 func Create(c *gin.Context) {
-	var todo Todo
-	if err := c.Bind(&todo); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"status": "BadRequest"})
+	db := c.MustGet("db").(*mgo.Database)
+
+	todo := models.Todo{}
+	err := c.Bind(&todo)
+	if err != nil {
+		c.Error(err)
 		return
 	}
-	c.JSON(http.StatusOK, todo)
+
+	todo.CreatedOn = time.Now().UnixNano() / int64(time.Millisecond)
+	todo.UpdatedOn = time.Now().UnixNano() / int64(time.Millisecond)
+
+	err = db.C(models.CollectionTodo).Insert(todo)
+	if err != nil {
+		c.Error(err)
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "ok"})
 }
 
 func Show(c *gin.Context) {
-	id, err := strconv.Atoi(c.Param("id"))
+	db := c.MustGet("db").(*mgo.Database)
+
+	todo := models.Todo{}
+	oId := bson.ObjectIdHex(c.Param("_id"))
+
+	err := db.C(models.CollectionTodo).FindId(oId).One(&todo)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"status": "BadRequest"})
+		c.Error(err)
 		return
 	}
-	c.JSON(http.StatusOK, *todos.findById(id))
+
+	c.JSON(http.StatusOK, todo)
 }
 
 func Update(c *gin.Context) {
-	c.JSON(http.StatusOK, gin.H{"message": "no implements"})
+	db := c.MustGet("db").(*mgo.Database)
+
+	todo := models.Todo{}
+	err := c.Bind(&todo)
+	if err != nil {
+		c.Error(err)
+		return
+	}
+
+	query := bson.M{"_id": bson.ObjectIdHex(c.Param("_id"))}
+	doc := bson.M{
+		"title":       todo.Title,
+		"status":      todo.Status,
+		"description": todo.Description,
+		"updated_on":  time.Now().UnixNano() / int64(time.Millisecond),
+	}
+
+	err = db.C(models.CollectionTodo).Update(query, doc)
+	if err != nil {
+		c.Error(err)
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "ok"})
 }
